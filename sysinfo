@@ -1,0 +1,126 @@
+#!/bin/bash
+
+#if [ -z $DISPLAY ]
+#then
+#    gui=dialog
+#else
+#    gui=Xdialog
+#fi
+
+gui=${gui=dialog}
+
+tempfile=$(ktemp 2>/dev/null) || tempfile=/tmp/test$$
+trap "rm -f $tempfile" 0 1 2 5 15
+
+$gui --backtitle "Server system info" \
+	--title "Menu options" \
+	--clear \
+	--menu "Select action:" 12 50 12 \
+        "1" "System info" \
+		"2" "Disk info" \
+		"3" "I/O speed test" \
+		"4" "Net speed test" \
+		"0" "Exit" \
+	2> $tempfile
+
+retval=$?
+choice=$(cat $tempfile)
+
+case $retval in
+  0)
+    action=$choice
+	;;
+  1)
+    echo "Cacneled."
+	action="0"
+	;;
+  255)
+    echo "Exit with ESC."
+	action="0"
+	;;
+esac
+
+goto()
+{
+	case $* in
+		"main") $0 ;;
+	esac
+}
+
+_get_sys_info()
+{
+	up=`uptime|awk '{ $1=$2=$(NF-6)=$(NF-5)=$(NF-4)=$(NF-3)=$(NF-2)=$(NF-1)=$NF=""; print }'`
+	cname=$( awk -F: '/model name/ {name=$2} END {print name}' /proc/cpuinfo )
+	cores=$( awk -F: '/model name/ {core++} END {print core}' /proc/cpuinfo )
+	freq=$( awk -F: ' /cpu MHz/ {freq=$2} END {print freq}' /proc/cpuinfo )
+	tram=$( free -m | awk 'NR==2 {print $2}' )
+	swap=$( free -m | awk 'NR==4 {print $2}' )
+	oscore=$(uname -sp)
+	eval $(cat /etc/*-release)
+
+	$gui --backtitle "System info" \
+		--msgbox "CPU model: $cname\n\
+Number of cores: $cores\n\
+CPU frequency: $freq MHz\n\
+Total amount of ram: $tram MB\n\
+Total amount of swap: $swap MB\n\
+System uptime: $up\n\
+OS core: $oscore\n\
+$(uname -s) version: $NAME $VERSION\n\
+" 13 70
+
+	goto main
+}
+
+_get_disk_info()
+{
+	lsblk > $tempfile
+	echo "" >> $tempfile
+	df -h >> $tempfile
+
+	$gui --backtitle "Disk info" \
+		--textbox $tempfile 20 70
+
+	goto main
+}
+
+_io_test()
+{
+	$gui --backtitle "I/O test run..." \
+		--infobox "I/O disk test runed.\nPlease wait..." \
+		5 50
+ 
+	io=$( (dd if=/dev/zero of=test_$$ bs=64k count=16k conv=fdatasync && rm -f test_$$) 2>&1|awk -F, '{io=$NF}END{print io}' )
+	
+	$gui --backtitle "I/O speed test" \
+		--msgbox "I/O speed: $io" \
+		5 50
+
+	goto main
+}
+
+_net_speed_test()
+{
+	$gui
+}
+
+case $action in
+	0) exit ;;
+	1)
+		_get_sys_info
+		;;
+	2)
+		_get_disk_info
+		;;
+	3)
+		_io_test
+		;;
+	4)
+		_net_speed_test
+		;;
+	*)
+		echo "Error action: $action"
+	;;
+esac
+
+#EOF#
