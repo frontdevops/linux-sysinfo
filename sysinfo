@@ -1,5 +1,8 @@
 #!/bin/bash
 
+export LC_ALL=en_US.UTF-8
+export LC_CTYPE=en_US.UTF-8
+
 if [ -z $DISPLAY ]
 	then gui=dialog
 	else gui=Xdialog
@@ -125,7 +128,10 @@ _net_speed_test()
 # function main() {
 #
 	case $action in
-		0) exit $? ;;
+		0)
+		    clear
+		    exit $?
+		    ;;
 		1) _get_sys_info ;;
 		2) _get_disk_info ;;
 		3) _io_test ;;
