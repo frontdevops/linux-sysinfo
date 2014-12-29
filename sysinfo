@@ -1,20 +1,15 @@
 #!/bin/bash
 
-#if [ -z $DISPLAY ]
-#then
-#    gui=dialog
-#else
-#    gui=Xdialog
-#fi
-
-gui=${gui=dialog}
+if [ -z $DISPLAY ]
+	then gui=dialog
+	else gui=Xdialog
+fi
 
 tempfile=$(ktemp 2>/dev/null) || tempfile=/tmp/test$$
 trap "rm -f $tempfile" 0 1 2 5 15
 
 $gui --backtitle "Server system info" \
 	--title "Menu options" \
-	--clear \
 	--menu "Select action:" 12 50 12 \
         "1" "System info" \
 		"2" "Disk info" \
@@ -27,17 +22,13 @@ retval=$?
 choice=$(cat $tempfile)
 
 case $retval in
-  0)
-    action=$choice
-	;;
-  1)
-    echo "Cacneled."
-	action="0"
-	;;
-  255)
-    echo "Exit with ESC."
-	action="0"
-	;;
+    0) action=$choice ;;
+    1) action="0" ;;
+  255) action="0" ;;
+    *)
+        echo "Error returned value: $retval"
+        exit 1
+    ;;
 esac
 
 goto()
@@ -50,11 +41,14 @@ goto()
 _get_sys_info()
 {
 	up=`uptime|awk '{ $1=$2=$(NF-6)=$(NF-5)=$(NF-4)=$(NF-3)=$(NF-2)=$(NF-1)=$NF=""; print }'`
-	cname=$( awk -F: '/model name/ {name=$2} END {print name}' /proc/cpuinfo )
-	cores=$( awk -F: '/model name/ {core++} END {print core}' /proc/cpuinfo )
+
+	cname=$(awk -F: '/model name/ {name=$2} END {print name}' /proc/cpuinfo )
+	cores=$(awk -F: '/model name/ {core++} END {print core}' /proc/cpuinfo )
 	freq=$( awk -F: ' /cpu MHz/ {freq=$2} END {print freq}' /proc/cpuinfo )
+
 	tram=$( free -m | awk 'NR==2 {print $2}' )
 	swap=$( free -m | awk 'NR==4 {print $2}' )
+
 	oscore=$(uname -sp)
 	eval $(cat /etc/*-release)
 
@@ -101,26 +95,48 @@ _io_test()
 
 _net_speed_test()
 {
-	$gui
+	$gui --backtitle "Net speed test" \
+		--title "Bandwidth benchmark" \
+		--menu "Select location:" 20 50 12 \
+			"1" "Central & Eastern Europe" \
+			"2" "Western & Southern Europe" \
+			"3" "Asia" \
+			"4" "Oceania" \
+			"5" "Northern America" \
+			"6" "Global CDN (CacheFly)" \
+			"0" "Return" \
+	2> $tempfile
+
+	retval=$?
+	choice=$(cat $tempfile)
+
+	case $retval in
+	    0) act=$choice ;;
+	    1) act="0" ;;
+	  255) act="0" ;;
+	esac
+
+	[[ $act = "0" ]] && goto main
+
+	echo $act
 }
 
-case $action in
-	0) exit ;;
-	1)
-		_get_sys_info
-		;;
-	2)
-		_get_disk_info
-		;;
-	3)
-		_io_test
-		;;
-	4)
-		_net_speed_test
-		;;
-	*)
-		echo "Error action: $action"
-	;;
-esac
+##
+# function main() {
+#
+	case $action in
+		0) exit $? ;;
+		1) _get_sys_info ;;
+		2) _get_disk_info ;;
+		3) _io_test ;;
+		4) _net_speed_test ;;
+		*)
+		    echo "Error action: $action"
+		    exit 1
+        ;;
+	esac
+#
+# }
+##
 
 #EOF#

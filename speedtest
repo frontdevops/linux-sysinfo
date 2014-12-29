@@ -1,0 +1,34 @@
+#!/bin/bash
+
+
+
+
+_download_benchmark()
+{
+	dowsp=`wget -O /dev/null $2 2>&1 | awk '/\/dev\/null/ {speed=$3 $4} END {gsub(/\(|\)/,"",speed); print speed}'`
+	echo "$1: $dowsp ($2)"
+}
+
+_traceroute()
+{
+	tr=$(traceroute $2 2>&1)
+	echo "Traceroute to $1..."
+	echo "$tr"
+	echo
+}
+
+_ping()
+{
+	echo "Pinging $1..."
+	pin=$(ping -c 10 $2 2>&1)
+	echo "$pin"
+	echo
+}
+
+_location_wase()
+{
+
+}
+
+
+#EOF#
